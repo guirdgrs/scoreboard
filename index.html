@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- TAILWIND CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- SWEET ALERT -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- MOTION ONE -->
+    <script src="https://cdn.jsdelivr.net/npm/motion@10.16.2/dist/motion.umd.js"></script>
+
+    <title>Scoreboard</title>
+
+    <style>
+        .selected {
+            outline: 4px solid #658cc5;
+        }
+        .bet-selected {
+            outline: 4px solid #c56565;
+        }
+        
+        /* Animações simples */
+        .player-hover:hover {
+            transform: translateY(-10px);
+            transition: transform 0.5s ease;
+        }
+        
+        .btn-hover:hover {
+            transform: translateY(-6px);
+            transition: transform 0.4s ease;
+        }
+        
+        .bank-hover:hover {
+            transform: scale(1.02);
+            transition: transform 0.2s ease;
+        }
+        
+        .score-change {
+            animation: pulse 0.3s ease;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+
+<body class="bg-[#b1c3e4] min-h-screen flex justify-center p-6">
+
+    <!-- CONTAINER CENTRAL -->
+    <div class="bg-white w-full max-w-6xl p-10 rounded-3xl shadow-xl">
+
+        <!-- GRID DOS PLAYERS -->
+        <div id="playersGrid" class="grid grid-cols-5 gap-6 mb-10"></div>
+
+        <!-- COFRINHO -->
+        <div class="flex justify-center mb-12">
+            <div id="bank"
+                class="bank-hover bg-[#cab7d9] w-64 p-6 rounded-2xl shadow-lg cursor-pointer text-center">
+                <img src="imgs/cofrinho.png"
+                     class="w-24 mx-auto mb-3">
+                <p id="bankValue" class="text-2xl font-bold">R$ 0</p>
+            </div>
+        </div>
+
+        <!-- SEÇÃO DE BOTÕES DE AÇÃO -->
+        <div class="grid grid-cols-2 gap-10 mb-14">
+
+            <!-- ADICIONAR -->
+            <div class="bg-[#b1c3e4] p-6 rounded-2xl shadow-lg text-center">
+                <h2 class="font-bold text-2xl mb-4">Adicionar</h2>
+                <div class="grid grid-cols-3 gap-4 justify-center">
+                    <!-- Botões -->
+                    <button class="btn-add btn-hover px-4 py-2 bg-green-500 text-white rounded-lg shadow" data-value="1000">+R$1000</button>
+                    <button class="btn-add btn-hover px-4 py-2 bg-green-500 text-white rounded-lg shadow" data-value="500">+R$500</button>
+                    <button class="btn-add btn-hover px-4 py-2 bg-green-500 text-white rounded-lg shadow" data-value="400">+R$400</button>
+                    <button class="btn-add btn-hover px-4 py-2 bg-green-500 text-white rounded-lg shadow" data-value="300">+R$300</button>
+                    <button class="btn-add btn-hover px-4 py-2 bg-green-500 text-white rounded-lg shadow" data-value="200">+R$200</button>
+                    <button class="btn-add btn-hover px-4 py-2 bg-green-500 text-white rounded-lg shadow" data-value="100">+R$100</button>
+                </div>
+            </div>
+
+            <!-- REMOVER -->
+            <div class="bg-[#b1c3e4] p-6 rounded-2xl shadow-lg text-center">
+                <h2 class="font-bold text-2xl mb-4">Remover</h2>
+                <div class="grid grid-cols-3 gap-4 justify-center">
+                    <!-- Botões -->
+                    <button class="btn-sub btn-hover px-4 py-2 bg-red-500 text-white rounded-lg shadow" data-value="1000">-R$1000</button>
+                    <button class="btn-sub btn-hover px-4 py-2 bg-red-500 text-white rounded-lg shadow" data-value="500">-R$500</button>
+                    <button class="btn-sub btn-hover px-4 py-2 bg-red-500 text-white rounded-lg shadow" data-value="400">-R$400</button>
+                    <button class="btn-sub btn-hover px-4 py-2 bg-red-500 text-white rounded-lg shadow" data-value="300">-R$300</button>
+                    <button class="btn-sub btn-hover px-4 py-2 bg-red-500 text-white rounded-lg shadow" data-value="200">-R$200</button>
+                    <button class="btn-sub btn-hover px-4 py-2 bg-red-500 text-white rounded-lg shadow" data-value="100">-R$100</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- SEÇÃO DE APOSTA -->
+        <div class="bg-[#cab7d9] p-6 rounded-2xl shadow-xl">
+
+            <h2 class="font-bold text-3xl mb-6 text-center">Aposta</h2>
+
+            <div class="space-y-6">
+                <!-- Players selecionados para aposta -->
+                <div>
+                    <label class="font-semibold block mb-2">Players na aposta:</label>
+                    <div id="betPlayersList" class="p-4 bg-gray-100 rounded-xl min-h-16 border border-gray-400 flex flex-wrap items-center justify-center gap-2">
+                        <p class="text-gray-500 text-sm">Nenhum player selecionado para aposta</p>
+                    </div>
+                    <div class="flex justify-center mt-3">
+                        <button id="btnClearBetPlayers" 
+                                class="btn-hover px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg">
+                            Limpar seleção
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Inputs de valor centralizados -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                    <div class="text-center">
+                        <label class="font-semibold block mb-3">Valor apostado por player:</label>
+                        <input id="betInput"
+                               type="number"
+                               class="w-full p-4 rounded-xl border-2 border-gray-400 text-center text-lg font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                               placeholder="Ex: 200" />
+                    </div>
+
+                    <div class="text-center">
+                        <label class="font-semibold block mb-3">Total da aposta:</label>
+                        <input id="betTotal"
+                               disabled
+                               class="w-full p-4 rounded-xl bg-gray-200 border-2 border-gray-400 text-center text-lg font-semibold"
+                               value="0" />
+                    </div>
+                </div>
+
+                <!-- Botões centralizados -->
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
+                    <button id="btnDescontar"
+                        class="btn-hover px-12 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg text-lg min-w-[200px]">
+                        Apostar
+                    </button>
+                    
+                    <button id="btnPremio"
+                        class="btn-hover px-12 py-4 bg-[#658cc5] hover:bg-[#587db3] text-white rounded-xl font-bold shadow-lg text-lg min-w-[200px]">
+                        Dar prêmio
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
