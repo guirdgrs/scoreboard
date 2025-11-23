@@ -1,17 +1,11 @@
 // ---------- CONFIGURAÇÃO INICIAL ----------
 const defaultAvatars = [
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
+    "https://i.pinimg.com/736x/0b/7b/8e/0b7b8e540a4afec66573053e104a48d8.jpg",
     ""
 ];
 
-// Carrega players do localStorage
-let players = loadPlayersFromStorage();
+// Firebase - Carrega players do Firebase
+let players = [];
 let editingIndex = null;
 let selectedAvatar = defaultAvatars[0];
 
@@ -23,33 +17,37 @@ const submitBtn = document.getElementById('submitBtn');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const avatarGrid = document.getElementById('avatarGrid');
 
-// ---------- FUNÇÕES DE STORAGE ----------
-function loadPlayersFromStorage() {
-    try {
-        const saved = localStorage.getItem('scoreboardPlayers');
-        console.log('Dados carregados do localStorage:', saved);
-        return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-        console.error('Erro ao carregar players:', error);
-        return [];
-    }
+// ---------- FUNÇÕES FIREBASE ----------
+function loadPlayersFromFirebase() {
+    database.ref('players').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            players = Object.values(data);
+            console.log('Dashboard - Players carregados:', players);
+            renderPlayersList();
+        } else {
+            players = [];
+            renderPlayersList();
+        }
+    });
 }
 
-function savePlayersToStorage() {
-    try {
-        localStorage.setItem('scoreboardPlayers', JSON.stringify(players));
-        console.log('Players salvos:', players);
-    } catch (error) {
-        console.error('Erro ao salvar players:', error);
-        Swal.fire('Erro!', 'Não foi possível salvar os players.', 'error');
-    }
+function savePlayersToFirebase() {
+    database.ref('players').set(players)
+        .then(() => {
+            console.log('Dashboard - Players salvos');
+            Swal.fire('Sucesso!', 'Alterações salvas!', 'success');
+        })
+        .catch(error => {
+            console.error('Erro ao salvar players:', error);
+            Swal.fire('Erro!', 'Não foi possível salvar os players.', 'error');
+        });
 }
 
 // ---------- INICIALIZAÇÃO ----------
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Dashboard carregado. Players:', players);
-    renderPlayersList();
-    // renderAvatarOptions();
+    console.log('Dashboard inicializado');
+    loadPlayersFromFirebase();
     setupEventListeners();
 });
 
@@ -101,34 +99,6 @@ function renderPlayersList() {
     `).join('');
 }
 
-// ---------- RENDERIZAR OPÇÕES DE AVATAR ----------
-// function renderAvatarOptions() {
-//     avatarGrid.innerHTML = defaultAvatars.map((avatar, index) => `
-//         <div class="avatar-option rounded-lg border-2 border-gray-300 p-1 ${index === 0 ? 'avatar-selected' : ''}"
-//              onclick="selectAvatar('${avatar}', this)">
-//             <img src="${avatar}" 
-//                  alt="Avatar ${index + 1}"
-//                  class="w-full h-16 object-cover rounded-md">
-//         </div>
-//     `).join('');
-// }
-
-// ---------- SELECIONAR AVATAR ----------
-function selectAvatar(avatarUrl, element) {
-    selectedAvatar = avatarUrl;
-    
-    // Remove seleção de todos
-    document.querySelectorAll('.avatar-option').forEach(option => {
-        option.classList.remove('avatar-selected');
-    });
-    
-    // Adiciona seleção ao clicado
-    element.classList.add('avatar-selected');
-    
-    // Limpa URL customizada quando seleciona um avatar padrão
-    document.getElementById('customAvatarUrl').value = '';
-}
-
 // ---------- CONFIGURAR EVENT LISTENERS ----------
 function setupEventListeners() {
     // Form submission
@@ -140,20 +110,10 @@ function setupEventListeners() {
     // Cancel edit
     cancelEditBtn.addEventListener('click', cancelEdit);
 
-    // Reset all scores
-    // document.getElementById('resetAllBtn').addEventListener('click', resetAllScores);
-
-    // Clear all players
-    // document.getElementById('clearAllBtn').addEventListener('click', clearAllPlayers);
-
     // Custom avatar URL change
     document.getElementById('customAvatarUrl').addEventListener('input', function(e) {
         if (e.target.value) {
             selectedAvatar = e.target.value;
-            // Desmarca avatares padrão quando usa URL customizada
-            document.querySelectorAll('.avatar-option').forEach(option => {
-                option.classList.remove('avatar-selected');
-            });
         }
     });
 }
@@ -199,7 +159,7 @@ function savePlayer() {
         Swal.fire('Sucesso!', `Player "${name}" adicionado com sucesso!`, 'success');
     }
 
-    savePlayersToStorage();
+    savePlayersToFirebase();
     renderPlayersList();
     resetForm();
 }
@@ -215,25 +175,6 @@ function editPlayer(index) {
 
     // Selecionar avatar
     selectedAvatar = player.avatar;
-    
-    // Verifica se o avatar está na lista padrão
-    const isDefaultAvatar = defaultAvatars.includes(player.avatar);
-    if (isDefaultAvatar) {
-        // Seleciona o avatar padrão correspondente
-        document.querySelectorAll('.avatar-option').forEach((option, i) => {
-            if (defaultAvatars[i] === player.avatar) {
-                option.classList.add('avatar-selected');
-            } else {
-                option.classList.remove('avatar-selected');
-            }
-        });
-    } else {
-        // É um avatar customizado, limpa seleção dos padrões
-        document.querySelectorAll('.avatar-option').forEach(option => {
-            option.classList.remove('avatar-selected');
-        });
-        document.getElementById('customAvatarUrl').value = player.avatar;
-    }
 
     // Atualizar UI para modo edição
     formTitle.innerHTML = '<i class="fas fa-edit mr-2 text-[#658cc5]"></i>Editar Player';
@@ -265,7 +206,6 @@ function resetForm() {
     
     // Resetar seleção de avatar
     selectedAvatar = defaultAvatars[0];
-    renderAvatarOptions();
 }
 
 // ---------- EXCLUIR PLAYER ----------
@@ -284,77 +224,12 @@ function deletePlayer(index) {
     }).then((result) => {
         if (result.isConfirmed) {
             players.splice(index, 1);
-            savePlayersToStorage();
+            savePlayersToFirebase();
             renderPlayersList();
             
             Swal.fire(
                 'Excluído!',
                 `Player "${playerName}" foi excluído com sucesso.`,
-                'success'
-            );
-        }
-    });
-}
-
-// ---------- RESETAR TODOS OS SCORES ----------
-function resetAllScores() {
-    if (players.length === 0) {
-        Swal.fire('Info!', 'Não há players para resetar.', 'info');
-        return;
-    }
-
-    Swal.fire({
-        title: 'Resetar Scores?',
-        html: 'Todos os players terão seus scores resetados para 0.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#f59e0b',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Sim, resetar!',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            players.forEach(player => {
-                player.score = 0;
-            });
-            savePlayersToStorage();
-            renderPlayersList();
-            
-            Swal.fire(
-                'Scores Resetados!',
-                'Todos os players agora têm score de 0.',
-                'success'
-            );
-        }
-    });
-}
-
-// ---------- LIMPAR TODOS OS PLAYERS ----------
-function clearAllPlayers() {
-    if (players.length === 0) {
-        Swal.fire('Info!', 'Não há players para limpar.', 'info');
-        return;
-    }
-
-    Swal.fire({
-        title: 'Limpar Tudo?',
-        html: `Você está prestes a excluir <strong>todos os ${players.length} players</strong>. Esta ação não pode ser desfeita!`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sim, limpar tudo!',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            players = [];
-            savePlayersToStorage();
-            renderPlayersList();
-            resetForm();
-            
-            Swal.fire(
-                'Limpo!',
-                'Todos os players foram removidos.',
                 'success'
             );
         }

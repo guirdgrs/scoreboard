@@ -1,17 +1,6 @@
 // ---------- CONFIG ----------
-// Carrega players do localStorage
-function loadPlayersFromStorage() {
-    try {
-        const saved = localStorage.getItem('scoreboardPlayers');
-        console.log('Scoreboard - Dados carregados:', saved);
-        return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-        console.error('Erro ao carregar players no scoreboard:', error);
-        return [];
-    }
-}
-
-let players = loadPlayersFromStorage();
+// Firebase - Carrega players do Firebase
+let players = [];
 let selected = null;
 let betPool = 0;      
 let betPlayers = [];
@@ -19,14 +8,48 @@ let betPlayers = [];
 const grid = document.getElementById("playersGrid");
 const bankValue = document.getElementById("bankValue");
 
-// ---------- SALVAR PLAYERS NO LOCALSTORAGE ----------
-function savePlayersToStorage() {
-    try {
-        localStorage.setItem('scoreboardPlayers', JSON.stringify(players));
-        console.log('Scoreboard - Players salvos:', players);
-    } catch (error) {
-        console.error('Erro ao salvar players do scoreboard:', error);
-    }
+// ---------- FUNÇÕES FIREBASE ----------
+function loadPlayersFromFirebase() {
+    database.ref('players').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            players = Object.values(data);
+            console.log('Scoreboard - Players carregados do Firebase:', players);
+            renderPlayers();
+        } else {
+            players = [];
+            renderPlayers();
+        }
+    });
+}
+
+function loadBetPoolFromFirebase() {
+    database.ref('betPool').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data !== null) {
+            betPool = data;
+            bankValue.textContent = `R$ ${betPool.toLocaleString()}`;
+            console.log('Scoreboard - Cofrinho carregado:', betPool);
+        }
+    });
+}
+
+function savePlayersToFirebase() {
+    database.ref('players').set(players)
+        .then(() => console.log('Scoreboard - Players salvos no Firebase'))
+        .catch(error => {
+            console.error('Erro ao salvar players:', error);
+            Swal.fire('Erro!', 'Não foi possível salvar os players.', 'error');
+        });
+}
+
+function saveBetPoolToFirebase() {
+    database.ref('betPool').set(betPool)
+        .then(() => console.log('Scoreboard - Cofrinho salvo no Firebase'))
+        .catch(error => {
+            console.error('Erro ao salvar cofrinho:', error);
+            Swal.fire('Erro!', 'Não foi possível salvar o cofrinho.', 'error');
+        });
 }
 
 // ---------- CRIAR CARDS ----------
@@ -79,14 +102,6 @@ function setupPlayerEvents() {
             clearSelection();
             selected = Number(card.dataset.index);
             card.classList.add("selected");
-
-            // Swal.fire({
-            //     title: `${players[selected].name} selecionado`,
-            //     text: 'Duplo-clique para adicionar/remover da aposta',
-            //     icon: 'info',
-            //     timer: 2000,
-            //     showConfirmButton: false
-            // });
         });
 
         // Duplo clique para adicionar/remover da aposta
@@ -186,12 +201,13 @@ document.querySelectorAll(".btn-add").forEach(btn => {
             betPool += value;
             bankValue.textContent = `R$ ${betPool.toLocaleString()}`;
             animateScore(bankValue);
+            saveBetPoolToFirebase();
         } else {
             players[selected].score += value;
             const scoreElement = document.getElementById(`score-${selected}`);
             scoreElement.textContent = `R$ ${players[selected].score.toLocaleString()}`;
             animateScore(scoreElement);
-            savePlayersToStorage();
+            savePlayersToFirebase();
         }
 
         Swal.fire({
@@ -216,12 +232,13 @@ document.querySelectorAll(".btn-sub").forEach(btn => {
             betPool = Math.max(0, betPool - value);
             bankValue.textContent = `R$ ${betPool.toLocaleString()}`;
             animateScore(bankValue);
+            saveBetPoolToFirebase();
         } else {
             players[selected].score -= value;
             const scoreElement = document.getElementById(`score-${selected}`);
             scoreElement.textContent = `R$ ${players[selected].score.toLocaleString()}`;
             animateScore(scoreElement);
-            savePlayersToStorage();
+            savePlayersToFirebase();
         }
 
         Swal.fire({
@@ -273,7 +290,8 @@ document.getElementById("btnDescontar").addEventListener("click", () => {
     // Atualiza total
     document.getElementById("betTotal").value = totalBet.toLocaleString();
 
-    savePlayersToStorage();
+    savePlayersToFirebase();
+    saveBetPoolToFirebase();
 
     Swal.fire({
         title: 'Aposta realizada!',
@@ -328,7 +346,8 @@ document.getElementById("btnPremio").addEventListener("click", () => {
         });
         updateBetPlayersList();
 
-        savePlayersToStorage();
+        savePlayersToFirebase();
+        saveBetPoolToFirebase();
 
         Swal.fire({
             title: "Prêmio Entregue!",
@@ -342,10 +361,43 @@ document.getElementById("btnPremio").addEventListener("click", () => {
     });
 });
 
+// ---------- ZERAR COFRINHO ----------
+document.getElementById("btnZerarCofrinho").addEventListener("click", () => {
+    if (betPool === 0) {
+        Swal.fire("O cofrinho já está vazio!", '', 'info');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Zerar Cofrinho?',
+        html: `Tem certeza que deseja zerar o cofrinho?<br><strong>R$ ${betPool.toLocaleString()}</strong> serão perdidos.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#9333ea',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sim, zerar!',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const valorPerdido = betPool;
+            betPool = 0;
+            bankValue.textContent = "R$ 0";
+            saveBetPoolToFirebase();
+            
+            Swal.fire(
+                'Cofrinho Zerado!',
+                `R$ ${valorPerdido.toLocaleString()} foram removidos do cofrinho.`,
+                'success'
+            );
+        }
+    });
+});
+
 // ---------- INICIALIZAÇÃO ----------
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Scoreboard inicializado');
-    renderPlayers();
+    console.log('Scoreboard Firebase inicializado');
+    loadPlayersFromFirebase();
+    loadBetPoolFromFirebase();
     
     // Adiciona link para dashboard
     const container = document.querySelector('.bg-white');
@@ -368,34 +420,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-});
-
-document.getElementById("btnZerarCofrinho").addEventListener("click", () => {
-    if (betPool === 0) {
-        Swal.fire("O cofrinho já está vazio!", '', 'info');
-        return;
-    }
-
-    Swal.fire({
-        title: 'Zerar Cofrinho?',
-        html: `Tem certeza que deseja zerar o cofrinho?<br><strong>R$ ${betPool.toLocaleString()}</strong> serão perdidos.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#9333ea',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Sim, zerar!',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const valorPerdido = betPool;
-            betPool = 0;
-            bankValue.textContent = "R$ 0";
-            
-            Swal.fire(
-                'Cofrinho Zerado!',
-                `R$ ${valorPerdido.toLocaleString()} foram removidos do cofrinho.`,
-                'success'
-            );
-        }
-    });
 });
