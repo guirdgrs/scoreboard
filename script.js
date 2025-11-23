@@ -78,12 +78,14 @@ function renderPlayers() {
             "playerCard player-hover bg-[#cab7d9] p-4 rounded-xl shadow text-center cursor-pointer";
         card.dataset.index = i;
 
+        const scoreClass = p.score >= 0 ? "text-green-700" : "text-red-500";
+
         card.innerHTML = `
             <img src="${p.avatar}" 
-                 class="w-20 h-20 rounded-full mx-auto mb-2 border-4 border-white shadow-md"
-                 onerror="this.src='https://i.pinimg.com/736x/0b/7b/8e/0b7b8e540a4afec66573053e104a48d8.jpg'">
+                class="w-20 h-20 rounded-full mx-auto mb-2 border-4 border-white shadow-md"
+                onerror="this.src='https://i.pinimg.com/736x/0b/7b/8e/0b7b8e540a4afec66573053e104a48d8.jpg'">
             <h3 class="font-bold text-lg">${p.name}</h3>
-            <p id="score-${i}" class="mt-2 font-bold text-xl">R$ ${p.score.toLocaleString()}</p>
+            <p id="score-${i}" class="mt-2 font-bold text-xl ${scoreClass}">R$ ${p.score.toLocaleString()}</p>
         `;
 
         grid.appendChild(card);
@@ -420,4 +422,79 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+});
+
+// ---------- VALORES PERSONALIZADOS ----------
+document.querySelector(".btn-add-custom").addEventListener("click", () => {
+    const customValue = Number(document.getElementById("addCustom").value);
+    
+    if (!customValue || customValue <= 0) {
+        Swal.fire("Erro!", "Digite um valor válido para adicionar.", "error");
+        return;
+    }
+
+    if (selected === null) {
+        Swal.fire("Selecione um player ou o cofrinho primeiro!");
+        return;
+    }
+
+    if (selected === "bank") {
+        betPool += customValue;
+        bankValue.textContent = `R$ ${betPool.toLocaleString()}`;
+        animateScore(bankValue);
+        saveBetPoolToFirebase();
+    } else {
+        players[selected].score += customValue;
+        const scoreElement = document.getElementById(`score-${selected}`);
+        scoreElement.textContent = `R$ ${players[selected].score.toLocaleString()}`;
+        animateScore(scoreElement);
+        savePlayersToFirebase();
+    }
+
+    // Limpa o input após adicionar
+    document.getElementById("addCustom").value = "";
+
+    Swal.fire({
+        title: `+R$ ${customValue.toLocaleString()} adicionado!`,
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+    });
+});
+
+document.querySelector(".btn-remove-custom").addEventListener("click", () => {
+    const customValue = Number(document.getElementById("removeCustom").value);
+    
+    if (!customValue || customValue <= 0) {
+        Swal.fire("Erro!", "Digite um valor válido para remover.", "error");
+        return;
+    }
+
+    if (selected === null) {
+        Swal.fire("Selecione um player ou o cofrinho primeiro!");
+        return;
+    }
+
+    if (selected === "bank") {
+        betPool = Math.max(0, betPool - customValue);
+        bankValue.textContent = `R$ ${betPool.toLocaleString()}`;
+        animateScore(bankValue);
+        saveBetPoolToFirebase();
+    } else {
+        players[selected].score -= customValue;
+        const scoreElement = document.getElementById(`score-${selected}`);
+        scoreElement.textContent = `R$ ${players[selected].score.toLocaleString()}`;
+        animateScore(scoreElement);
+        savePlayersToFirebase();
+    }
+
+    // Limpa o input após remover
+    document.getElementById("removeCustom").value = "";
+
+    Swal.fire({
+        title: `-R$ ${customValue.toLocaleString()} removido!`,
+        icon: 'info',
+        timer: 1500,
+        showConfirmButton: false
+    });
 });
