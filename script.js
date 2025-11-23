@@ -4,6 +4,7 @@ let players = [];
 let selected = null;
 let betPool = 0;      
 let betPlayers = [];
+let currentBetTotal = 0;
 
 const grid = document.getElementById("playersGrid");
 const bankValue = document.getElementById("bankValue");
@@ -285,20 +286,18 @@ document.getElementById("btnDescontar").addEventListener("click", () => {
         animateScore(scoreElement);
     });
 
-    const totalBet = betValue * betPlayers.length;
-    betPool += totalBet;
-    bankValue.textContent = `R$ ${betPool.toLocaleString()}`;
+    // CORREÇÃO: O valor da aposta NÃO vai para o cofrinho, fica separado
+    currentBetTotal = betValue * betPlayers.length;
 
-    // Atualiza total
-    document.getElementById("betTotal").value = totalBet.toLocaleString();
+    // Atualiza total da aposta (apenas para informação)
+    document.getElementById("betTotal").value = currentBetTotal.toLocaleString();
 
     savePlayersToFirebase();
-    saveBetPoolToFirebase();
 
     Swal.fire({
         title: 'Aposta realizada!',
         html: `<strong>${betPlayers.length} players</strong> apostaram <strong>R$ ${betValue.toLocaleString()}</strong> cada<br>
-              <strong>Total: R$ ${totalBet.toLocaleString()}</strong>`,
+              <strong>Total da aposta: R$ ${currentBetTotal.toLocaleString()}</strong><br>`,
         icon: 'success',
         confirmButtonText: 'Ótimo!'
     });
@@ -306,7 +305,7 @@ document.getElementById("btnDescontar").addEventListener("click", () => {
 
 // ---------- PREMIAR ----------
 document.getElementById("btnPremio").addEventListener("click", () => {
-    if (betPool === 0) {
+    if (currentBetTotal === 0) {
         Swal.fire("Não há aposta para distribuir!");
         return;
     }
@@ -328,18 +327,17 @@ document.getElementById("btnPremio").addEventListener("click", () => {
         if (!res.isConfirmed) return;
 
         const winner = Number(res.value);
-        const prize = betPool;
+        const prize = currentBetTotal;
 
-        // dar prêmio
+        // dar prêmio (apenas o valor da aposta, não o cofrinho)
         players[winner].score += prize;
         const scoreElement = document.getElementById(`score-${winner}`);
         scoreElement.textContent = `R$ ${players[winner].score.toLocaleString()}`;
         animateScore(scoreElement);
 
-        // resetar tudo
-        betPool = 0;
+        // CORREÇÃO: Resetar apenas a aposta, manter o cofrinho
+        currentBetTotal = 0;
         betPlayers = [];
-        bankValue.textContent = "R$ 0";
         document.getElementById("betTotal").value = "0";
         
         // Limpar seleção visual
@@ -349,13 +347,12 @@ document.getElementById("btnPremio").addEventListener("click", () => {
         updateBetPlayersList();
 
         savePlayersToFirebase();
-        saveBetPoolToFirebase();
 
         Swal.fire({
             title: "Prêmio Entregue!",
             html: `<div class="text-center">
                      <strong>${players[winner].name}</strong> ganhou<br>
-                     <strong class="text-2xl text-green-600">R$ ${prize.toLocaleString()}</strong>
+                     <strong class="text-2xl text-green-600">R$ ${prize.toLocaleString()}</strong><br>
                    </div>`,
             icon: 'success',
             confirmButtonText: 'Fantástico!'
@@ -400,6 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Scoreboard Firebase inicializado');
     loadPlayersFromFirebase();
     loadBetPoolFromFirebase();
+    loadCurrentBetFromFirebase();
     
     // Adiciona link para dashboard
     const container = document.querySelector('.bg-white');
@@ -498,3 +496,22 @@ document.querySelector(".btn-remove-custom").addEventListener("click", () => {
         showConfirmButton: false
     });
 });
+
+function saveCurrentBetToFirebase() {
+    database.ref('currentBetTotal').set(currentBetTotal)
+        .then(() => console.log('Aposta atual salva no Firebase'))
+        .catch(error => {
+            console.error('Erro ao salvar aposta:', error);
+        });
+}
+
+function loadCurrentBetFromFirebase() {
+    database.ref('currentBetTotal').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data !== null) {
+            currentBetTotal = data;
+            document.getElementById("betTotal").value = currentBetTotal.toLocaleString();
+            console.log('Aposta atual carregada:', currentBetTotal);
+        }
+    });
+}
