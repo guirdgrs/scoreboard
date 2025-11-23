@@ -369,3 +369,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+document.getElementById("btnZerarCofrinho").addEventListener("click", () => {
+    if (betPool === 0) {
+        Swal.fire("O cofrinho já está vazio!", '', 'info');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Zerar Cofrinho?',
+        html: `Tem certeza que deseja zerar o cofrinho?<br><strong>R$ ${betPool.toLocaleString()}</strong> serão perdidos.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#9333ea',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sim, zerar!',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const valorPerdido = betPool;
+            betPool = 0;
+            bankValue.textContent = "R$ 0";
+            
+            Swal.fire(
+                'Cofrinho Zerado!',
+                `R$ ${valorPerdido.toLocaleString()} foram removidos do cofrinho.`,
+                'success'
+            );
+        }
+    });
+});
