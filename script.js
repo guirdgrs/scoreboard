@@ -58,7 +58,7 @@ function renderPlayers() {
         card.innerHTML = `
             <img src="${p.avatar}" 
                  class="w-20 h-20 rounded-full mx-auto mb-2 border-4 border-white shadow-md"
-                 onerror="this.src='https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face'">
+                 onerror="this.src='https://media.discordapp.net/attachments/1253765474198491147/1441981572906614894/ygona-1.jpg?ex=6923c57d&is=692273fd&hm=dabb1f97e50a32b17b5cef391ee9161b3fe029f35cfa3786b8215d17fea5c692&=&format=webp&width=648&height=648'">
             <h3 class="font-bold text-lg">${p.name}</h3>
             <p id="score-${i}" class="mt-2 font-bold text-xl">R$ ${p.score.toLocaleString()}</p>
         `;
@@ -217,7 +217,7 @@ document.querySelectorAll(".btn-sub").forEach(btn => {
             bankValue.textContent = `R$ ${betPool.toLocaleString()}`;
             animateScore(bankValue);
         } else {
-            players[selected].score = Math.max(0, players[selected].score - value);
+            players[selected].score -= value;
             const scoreElement = document.getElementById(`score-${selected}`);
             scoreElement.textContent = `R$ ${players[selected].score.toLocaleString()}`;
             animateScore(scoreElement);
